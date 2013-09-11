@@ -1,0 +1,48 @@
+*yankitute.txt* regex powered yank+substitute
+
+
+Author:  Idan Arye <https://github.com/someboddy/>
+License: Same terms as Vim itself (see |license|)
+
+Version: 1.0.0
+
+INTRODUCTION                                                       *yankitute*
+
+Yankitute combines the |:yank| and |:substitute| Vim commands into one. Like
+substitute, it searches for a pattern in the buffer and transforms all matches
+using a format string supplied by the user. But instead of replacing the text
+in the buffer with the transformed matches, it acts like |:yank| and copies the
+transformed matches into a register.
+
+SYNTAX                                                       *yankitute-syntax*
+
+
+The syntax resembles Vim's built-in substitute command: >
+   :[range]Yankitute[register]/{pattern}/[string]/[flags]/[join]
+<
+
+ * [range]: The range to search in. Defaults to the current line.
+ * [register]: A register to put the transformed matches in.
+ * {pattern}: The pattern to look for - just like in |:substitute|.
+ * [string]: The format string to replace matches with - just like in
+   |:substitute|. If not supplied, the match is yanked as is.
+ * [flags]: Currently only one flag is supported - "g". If the "g" flag is
+   given, searches for more than one match in each line. Note that multiple
+   matches from the same line will end up in separate lines in the text copied to
+   the register.
+ * [join]: Joins the matches together with a join string, instead of placing
+   them in separate lines.
+
+"Not supplying an option" means omitting it's leading "/". If the "/" is there,
+the option is supplied - even if it's an empty string. So, if you write
+":%Yankitute/*///", the [string] option is supplied as empty string - meaning
+that all matches will be substituted with empty strings - and the [join]
+option is supplied as an empty string as well - meaning that the results will
+be concatenated(=joined with an empty join string).
+
+Like with the built-in |:substitute|, the separator "/" can be any character -
+even letters.  Keep in mind, however, that Vim will try to parse the first
+character as a register. Only if the first character is not a valid register -
+like "/", "$" or "?" - it will be the separator.
+
+The separator can be escaped with a leading "\".

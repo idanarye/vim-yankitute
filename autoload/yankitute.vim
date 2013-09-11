@@ -11,17 +11,17 @@ function! yankitute#yankWithPattern(cmd,fromLine,toLine,register)
 	let l:lines=getline(a:fromLine,a:toLine)
 	let l:yankedStrings=[]
 	for l:line in l:lines
-		let l:matchCount=0
+		let l:matchFrom=0
 		let l:match=matchstr(l:line,l:pattern)
-		while(!empty(l:match) && (0==l:matchCount || l:allFlag))
-			let l:matchCount+=1
+		while(!empty(l:match) && (0==l:matchFrom || l:allFlag))
+			let l:matchFrom=stridx(l:line,l:match,l:matchFrom)+max([len(l:match),1])
 			if(!empty(l:substitution))
 				call add(l:yankedStrings,substitute(l:match,l:pattern,l:substitution,''))
 			else
 				call add(l:yankedStrings,l:match)
 			endif
 			if(l:allFlag)
-				let l:match=matchstr(l:line,l:pattern,0,1+l:matchCount)
+				let l:match=matchstr(l:line,l:pattern,l:matchFrom)
 			endif
 		endwhile
 	endfor

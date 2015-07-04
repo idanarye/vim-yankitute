@@ -1,59 +1,77 @@
 function! yankitute#execute(cmd, start, end, reg) abort
-  let [reg, cmd] = a:reg =~? '[a-z0-9"]' ? [a:reg, a:cmd] : ['"', a:reg . a:cmd]
-  let sep = strlen(cmd) ? cmd[0] : '/'
-	let [pat, s:replace, flags, join; _] = split(cmd[1:], '\v([^\\](\\\\)*\\)@<!%d' . char2nr(sep), 1) + ['', '', '', '']
+    let [l:reg, l:cmd] = a:reg =~? '[a-z0-9"]' ? [a:reg, a:cmd] : ['"', a:reg . a:cmd]
+    let l:sep = strlen(l:cmd) ? l:cmd[0] : '/'
+    let [l:pat, l:replace, l:flags, l:join; _] = split(l:cmd[1:], '\v([^\\](\\\\)*\\)@<!%d' . char2nr(l:sep), 1) + ['', '', '', '']
 
-  if pat != ''
-    let @/ = pat
-  endif
-
-  if s:replace == ''
-    let s:replace = '&'
-  endif
-  let is_sub_replace = s:replace =~ '^\\='
-  let fn = 'yankitute#' . (is_sub_replace ? 'eval' : 'gather') . '()'
-
-  if v:version >= 704 || (v:version == 703 && has('patch627'))
-    let flags = 'n' .flags
-  else
-    let flags = substitute(flags, '\Cn', '', 'g')
-  endif
-
-  let s:results = []
-  let v:errmsg = ''
-  let win = winsaveview()
-  try
-    silent execute 'keepjumps ' . a:start . ',' . a:end . 's' . sep . pat . sep . '\=' . fn . sep . flags
-  catch
-    let v:errmsg = substitute(v:exception, '.*:\zeE\d\+:\s', '', '')
-    return 'echoerr v:errmsg'
-  finally
-    if flags !~# 'n'
-      call winrestview(win)
+    if l:pat != ''
+        let @/ = l:pat
     endif
-  endtry
 
-  let results = []
-  if is_sub_replace
-    let results = s:results
-  else
-    for m in s:results
-      call add(results, substitute(s:replace, '\v%(%(\\\\)*\\)@<!%(\\(\d)|(\&))', '\=get(m,submatch(1)=="&"?0:submatch(1))', 'g'))
-    endfor
-  endif
-  unlet s:results
+    if l:replace == ''
+        let l:replace = '&'
+    endif
+    let l:is_sub_replace = l:replace =~ '^\\='
+    if l:is_sub_replace
+        let l:fn = 's:eval(l:results, l:replace)'
+    else
+        let l:fn = 's:gather(l:results)'
+    endif
 
-  let [join, type] = join == '' ? ["\n", 'l'] : [join, 'c']
-  call setreg(reg, join(results, join), type)
-  return ''
+    if l:flags =~ '\Cn'
+        return 'echoerr "the n flag is not allowed in Yankitute"'
+    elseif l:flags =~ '\Cc'
+        return 'echoerr "the c flag is not allowed in Yankitute"'
+    endif
+    let l:flags = substitute(l:flags, '\Cn', '', 'g')
+
+    let l:results = []
+    let v:errmsg = ''
+    let l:winview = winsaveview()
+    let l:winrestcmd = winrestcmd()
+    let l:winfixwidths = map(range(1, winnr('$')), 'getwinvar(v:val, "&winfixwidth")')
+    let l:winfixheights = map(range(1, winnr('$')), 'getwinvar(v:val, "&winfixwidth")')
+    windo setlocal winfixwidth
+    windo setlocal winfixheight
+    try
+        let l:bufnr = bufnr('')
+        new
+        try
+            setlocal buftype=nofile
+            setlocal bufhidden=wipe
+            call setline(1, getbufline(l:bufnr, 0, '$'))
+            silent execute 'keepjumps ' . a:start . ',' . a:end . 'substitute' . l:sep . l:pat . l:sep . '\=' . l:fn . l:sep . l:flags
+        finally
+            bdelete!
+        endtry
+    catch
+        let v:errmsg = substitute(v:exception, '.*:\zeE\d\+:\s', '', '')
+        return 'echoerr v:errmsg'
+    finally
+        for l:i in range(1, winnr('$'))
+            call setwinvar(l:i, '&winfixwidth', l:winfixheights[l:i - 1])
+            call setwinvar(l:i, '&winfixheight', l:winfixheights[l:i - 1])
+        endfor
+        execute l:winrestcmd
+        call winrestview(l:winview)
+    endtry
+
+    if !l:is_sub_replace
+        for l:i in range(len(l:results))
+            let l:results[l:i] = substitute(l:replace, '\v%(%(\\\\)*\\)@<!%(\\(\d)|(\&))', '\=get(l:results[l:i],submatch(1)=="&"?0:submatch(1))', 'g')
+        endfor
+    endif
+
+    let [l:join, type] = l:join == '' ? ["\n", 'l'] : [l:join, 'c']
+    call setreg(l:reg, join(l:results, l:join), type)
+    return ''
 endfunction
 
-function! yankitute#gather() abort
-  let s:results += [map(range(10), 'submatch(v:val)')]
-  return submatch(0)
+function! s:gather(results) abort
+    call add(a:results, map(range(10), 'submatch(v:val)'))
+    return submatch(0)
 endfunction
 
-function! yankitute#eval() abort
-  call add(s:results, eval(s:replace[2:]))
-  return submatch(0)
+function! s:eval(results, replace) abort
+    call add(a:results, eval(a:replace[2:]))
+    return submatch(0)
 endfunction

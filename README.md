@@ -24,6 +24,10 @@ The syntax resembles Vim's built-in substitute command:
    given, searches for more than one match in each line. Note that multiple
    matches from the same line will end up in separate lines in the text copied to
    the register.
+ * `[flags]`: Just like in `substitute`, except `c` and `n` are not supported.
+   If the `g` flag is given, searches for more than one match in each line.
+   Note that multiple matches from the same line will end up in separate lines in
+   the text copied to the register.
  * `[join]`: Joins the matches together with a join string, instead of placing
    them in separate lines.
 

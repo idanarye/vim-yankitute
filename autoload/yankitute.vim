@@ -55,5 +55,5 @@ endfunction
 
 function! yankitute#eval() abort
   call add(s:results, eval(s:replace[2:]))
-  rfunction! yankitute#execute(cmd, start, end, reg) abort,function,function! yankitute#gather() abort,function,function! yankitute#eval() abort,functioneturn submatch(0)
+  return submatch(0)
 endfunction

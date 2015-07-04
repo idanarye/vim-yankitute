@@ -11,15 +11,26 @@ function! yankitute#execute(cmd, start, end, reg) abort
     let s:replace = '&'
   endif
   let is_sub_replace = s:replace =~ '^\\='
-  let fn = 'yankitute#' . (is_sub_replace ? 'eval' : 'gather')
+  let fn = 'yankitute#' . (is_sub_replace ? 'eval' : 'gather') . '()'
+
+  if v:version >= 704 || (v:version == 703 && has('patch627'))
+    let flags = 'n' .flags
+  else
+    let flags = substitute(flags, '\Cn', '', 'g')
+  endif
 
   let s:results = []
   let v:errmsg = ''
+  let win = winsaveview()
   try
-    silent execute a:start . ',' . a:end . 's' . sep . pat . sep . '\=' . fn . '()' . sep . 'n' . flags
+    silent execute 'keepjumps ' . a:start . ',' . a:end . 's' . sep . pat . sep . '\=' . fn . sep . flags
   catch
     let v:errmsg = substitute(v:exception, '.*:\zeE\d\+:\s', '', '')
     return 'echoerr v:errmsg'
+  finally
+    if flags !~# 'n'
+      call winrestview(win)
+    endif
   endtry
 
   let results = []
@@ -32,14 +43,17 @@ function! yankitute#execute(cmd, start, end, reg) abort
   endif
   unlet s:results
 
-  call setreg(reg, join == '' ? results : join(results, join))
+  let [join, type] = join == '' ? ["\n", 'l'] : [join, 'c']
+  call setreg(reg, join(results, join), type)
   return ''
 endfunction
 
 function! yankitute#gather() abort
   let s:results += [map(range(10), 'submatch(v:val)')]
+  return submatch(0)
 endfunction
 
 function! yankitute#eval() abort
   call add(s:results, eval(s:replace[2:]))
+  rfunction! yankitute#execute(cmd, start, end, reg) abort,function,function! yankitute#gather() abort,function,function! yankitute#eval() abort,functioneturn submatch(0)
 endfunction
